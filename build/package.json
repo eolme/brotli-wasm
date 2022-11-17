@@ -1,0 +1,7 @@
+{
+  "name": "brotli-compress-wasm",
+  "type": "module",
+  "version": "0.0.1",
+  "main": "./main.js",
+  "types": "./main.d.ts"
+}

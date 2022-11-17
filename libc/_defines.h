@@ -1,9 +1,9 @@
 #ifndef __LIBC_EXPORTS
-#define __LIBC_EXPORTS __attribute__((visibility("default")))
+#define __LIBC_EXPORTS
 #endif
 
 #ifndef __LIBC_INLINE
-#define __LIBC_INLINE __attribute__((__always_inline__))
+#define __LIBC_INLINE static inline __attribute__((always_inline))
 #endif
 
 #ifndef EXIT_FAILURE
@@ -28,4 +28,8 @@
 
 #ifndef NAN
 #define NAN (char *)0x7fc00000
+#endif
+
+#ifndef NULL
+#define NULL ((void *)0)
 #endif

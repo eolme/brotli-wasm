@@ -1,5 +1,6 @@
 #include "_defines.h"
+#include "_types.h"
 
-__LIBC_EXPORTS void *malloc(unsigned long n);
-__LIBC_EXPORTS void *free(void *p);
-__LIBC_EXPORTS void *exit(int code);
+__LIBC_EXPORTS void *malloc(size_t n);
+__LIBC_EXPORTS void free(void *ptr);
+__LIBC_EXPORTS void exit(int code);
