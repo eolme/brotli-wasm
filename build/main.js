@@ -1,4 +1,17 @@
-import * as brotli from './main.wasm?module';
+import * as wasm from './main.wasm?module';
+
+/**
+ * @typedef {object} Brotli
+ * @property {WebAssembly.Memory} memory
+ * @property {(size: number) => number} alloc
+ * @property {() => number} offset
+ * @property {(pointer: number, size: number) => number} compress
+ */
+
+/**
+ * @type {Brotli}
+ */
+const brotli = (new WebAssembly.Instance(wasm.default, {})).exports;
 
 /**
  * @param {number} pointer
@@ -6,7 +19,7 @@ import * as brotli from './main.wasm?module';
  */
 const store = (pointer, buffer) => {
   let bufferMemory = new Uint8Array(brotli.memory.buffer);
-  for (let i = pointer, j = 0, length = buffer.byteLength; pointer < length; ++i, ++j) {
+  for (let i = pointer, j = 0, size = buffer.byteLength; j < size; ++i, ++j) {
     bufferMemory[i] = buffer[j];
   }
   bufferMemory = null;
