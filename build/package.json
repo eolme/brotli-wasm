@@ -3,5 +3,27 @@
   "type": "module",
   "version": "0.0.1",
   "main": "./main.js",
-  "types": "./main.d.ts"
+  "types": "./main.d.ts",
+  "author": {
+    "name": "Anton Petrov",
+    "email": "im@petrov.engineer",
+    "url": "https://petrov.engineer"
+  },
+  "description": "The smallest brotli compression module for the edge",
+  "license": "MIT",
+  "keywords": [
+    "brotli",
+    "compress",
+    "encode",
+    "wasm",
+    "webassembly",
+    "edge"
+  ],
+  "homepage": "https://github.com/eolme/brotli-wasm",
+  "bugs": "https://github.com/eolme/brotli-wasm/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eolme/brotli-wasm.git"
+  },
+  "sideEffects": false
 }
