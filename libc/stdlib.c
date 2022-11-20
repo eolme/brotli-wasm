@@ -1,47 +1,25 @@
-#include "_defines.h"
 #include "_types.h"
 
-#define STATIC_ASSERT_EQ(a, b) _Static_assert((a) == (b), "eq")
-
-#ifndef NDEBUG
-#define ASSERT(x)               \
-  do {                          \
-    if (!(x)) __builtin_trap(); \
-  } while (0)
-#else
-#define ASSERT(x) \
-  do {            \
-  } while (0)
-#endif
-#define ASSERT_EQ(a, b) ASSERT((a) == (b))
-
 __LIBC_INLINE size_t max(size_t a, size_t b) { return a < b ? b : a; }
+
 __LIBC_INLINE uintptr_t align(uintptr_t val, uintptr_t alignment) {
   return (val + alignment - 1) & ~(alignment - 1);
 }
-#define ASSERT_ALIGNED(x, y) ASSERT((x) == align((x), y))
 
 #define CHUNK_SIZE 256
 #define CHUNK_SIZE_LOG_2 8
 #define CHUNK_MASK (CHUNK_SIZE - 1)
-STATIC_ASSERT_EQ(CHUNK_SIZE, 1 << CHUNK_SIZE_LOG_2);
 
 #define PAGE_SIZE 65536
 #define PAGE_SIZE_LOG_2 16
 #define PAGE_MASK (PAGE_SIZE - 1)
-STATIC_ASSERT_EQ(PAGE_SIZE, 1 << PAGE_SIZE_LOG_2);
 
 #define CHUNKS_PER_PAGE 256
-STATIC_ASSERT_EQ(PAGE_SIZE, CHUNK_SIZE *CHUNKS_PER_PAGE);
 
 #define GRANULE_SIZE 8
 #define GRANULE_SIZE_LOG_2 3
 #define LARGE_OBJECT_THRESHOLD 256
 #define LARGE_OBJECT_GRANULE_THRESHOLD 32
-
-STATIC_ASSERT_EQ(GRANULE_SIZE, 1 << GRANULE_SIZE_LOG_2);
-STATIC_ASSERT_EQ(LARGE_OBJECT_THRESHOLD,
-                 LARGE_OBJECT_GRANULE_THRESHOLD *GRANULE_SIZE);
 
 struct chunk {
   char data[CHUNK_SIZE];
@@ -105,12 +83,12 @@ struct page {
 
 #define PAGE_HEADER_SIZE (sizeof(struct page_header))
 #define FIRST_ALLOCATABLE_CHUNK 1
-STATIC_ASSERT_EQ(PAGE_HEADER_SIZE, FIRST_ALLOCATABLE_CHUNK *CHUNK_SIZE);
 
-static struct page *get_page(void *ptr) {
+__LIBC_INLINE struct page *get_page(void *ptr) {
   return (struct page *)(char *)(((uintptr_t)ptr) & ~PAGE_MASK);
 }
-static unsigned get_chunk_index(void *ptr) {
+
+__LIBC_INLINE unsigned get_chunk_index(void *ptr) {
   return (((uintptr_t)ptr) & PAGE_MASK) / CHUNK_SIZE;
 }
 
@@ -128,6 +106,7 @@ struct large_object {
 __LIBC_INLINE void *get_large_object_payload(struct large_object *obj) {
   return ((char *)obj) + LARGE_OBJECT_HEADER_SIZE;
 }
+
 __LIBC_INLINE struct large_object *get_large_object(void *ptr) {
   return (struct large_object *)(((char *)ptr) - LARGE_OBJECT_HEADER_SIZE);
 }
@@ -156,7 +135,6 @@ static struct page *allocate_pages(size_t payload_size, size_t *n_allocated) {
   if (preallocated < needed) {
     // Always grow the walloc heap at least by 50%.
     grow = align(max(walloc_heap_size / 2, needed - preallocated), PAGE_SIZE);
-    ASSERT(grow);
     if (__builtin_wasm_memory_grow(0, grow >> PAGE_SIZE_LOG_2) == -1) {
       return NULL;
     }
@@ -165,8 +143,6 @@ static struct page *allocate_pages(size_t payload_size, size_t *n_allocated) {
 
   struct page *ret = (struct page *)base;
   size_t size = grow + preallocated;
-  ASSERT(size);
-  ASSERT_ALIGNED(size, PAGE_SIZE);
   *n_allocated = size / PAGE_SIZE;
   return ret;
 }
@@ -199,7 +175,6 @@ static struct large_object **maybe_merge_free_large_object(
   struct large_object *obj = *prev;
   while (1) {
     char *end = get_large_object_payload(obj) + obj->size;
-    ASSERT_ALIGNED((uintptr_t)end, CHUNK_SIZE);
     unsigned chunk = get_chunk_index(end);
     if (chunk < FIRST_ALLOCATABLE_CHUNK) {
       // Merging can't create a large object that newly spans the header chunk.
@@ -214,7 +189,6 @@ static struct large_object **maybe_merge_free_large_object(
 
     struct large_object **prev_prev = &large_objects, *walk = large_objects;
     while (1) {
-      ASSERT(walk);
       if (walk == next) {
         obj->size += LARGE_OBJECT_HEADER_SIZE + walk->size;
         *prev_prev = walk->next;
@@ -284,7 +258,6 @@ static struct large_object *allocate_large_object(size_t size) {
     best->next = large_objects;
     best->size = best_size =
         n_allocated * PAGE_SIZE - page_header - LARGE_OBJECT_HEADER_SIZE;
-    ASSERT(best_size >= size_with_header);
   }
 
   allocate_chunk(get_page(best), get_chunk_index(best), LARGE_OBJECT);
@@ -302,11 +275,9 @@ static struct large_object *allocate_large_object(size_t size) {
 
     if (start_page == get_page(end - tail_size - 1)) {
       // The allocation does not span a page boundary; yay.
-      ASSERT_ALIGNED((uintptr_t)end, CHUNK_SIZE);
     } else if (size < PAGE_SIZE - LARGE_OBJECT_HEADER_SIZE - CHUNK_SIZE) {
       // If the allocation itself smaller than a page, split off the head, then
       // fall through to maybe split the tail.
-      ASSERT_ALIGNED((uintptr_t)end, PAGE_SIZE);
       size_t first_page_size = PAGE_SIZE - (((uintptr_t)start) & PAGE_MASK);
       struct large_object *head = best;
       allocate_chunk(start_page, get_chunk_index(start), FREE_LARGE_OBJECT);
@@ -322,14 +293,12 @@ static struct large_object *allocate_large_object(size_t size) {
       best = (struct large_object *)ptr;
       best->size = best_size =
           best_size - first_page_size - CHUNK_SIZE - LARGE_OBJECT_HEADER_SIZE;
-      ASSERT(best_size >= size);
       start = get_large_object_payload(best);
       tail_size = (best_size - size) & ~CHUNK_MASK;
     } else {
       // A large object that spans more than one page will consume all of its
       // tail pages.  Therefore if the split traverses a page boundary, round up
       // to page size.
-      ASSERT_ALIGNED((uintptr_t)end, PAGE_SIZE);
       size_t first_page_size = PAGE_SIZE - (((uintptr_t)start) & PAGE_MASK);
       size_t tail_pages_size = align(size - first_page_size, PAGE_SIZE);
       size = first_page_size + tail_pages_size;
@@ -350,16 +319,12 @@ static struct large_object *allocate_large_object(size_t size) {
       struct large_object *tail = (struct large_object *)tail_ptr;
       tail->next = large_objects;
       tail->size = tail_size - LARGE_OBJECT_HEADER_SIZE;
-      ASSERT_ALIGNED((uintptr_t)(get_large_object_payload(tail) + tail->size),
-                     CHUNK_SIZE);
       large_objects = tail;
 
       maybe_repurpose_single_chunk_large_objects_head();
     }
   }
 
-  ASSERT_ALIGNED((uintptr_t)(get_large_object_payload(best) + best->size),
-                 CHUNK_SIZE);
   return best;
 }
 
@@ -391,8 +356,8 @@ __LIBC_INLINE size_t size_to_granules(size_t size) {
   return (size + GRANULE_SIZE - 1) >> GRANULE_SIZE_LOG_2;
 }
 
-static struct freelist **get_small_object_freelist(enum chunk_kind kind) {
-  ASSERT(kind < SMALL_OBJECT_CHUNK_KINDS);
+__LIBC_INLINE struct freelist **get_small_object_freelist(
+    enum chunk_kind kind) {
   return &small_object_freelists[kind];
 }
 
