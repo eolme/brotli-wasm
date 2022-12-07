@@ -2,9 +2,9 @@ ROOTDIR = $(PWD)/
 
 CPP = clang
 CPP_SIMD = -m32 -msimd128 -mprefer-vector-width=128 -fvectorize -ftree-vectorize -fslp-vectorize -ftree-slp-vectorize -mbulk-memory
-CPP_OPTIMIZE = -v -Ofast -flto=full -fvirtual-function-elimination -fwhole-program-vtables -funsafe-math-optimizations -fstrict-enums
+CPP_OPTIMIZE = -v -Oz -fno-signed-zeros -ffp-contract=fast -flto=thin -fwhole-program-vtables -ffast-math -funsafe-math-optimizations -menable-unsafe-fp-math -fno-honor-nans -fno-honor-infinities -fstrict-enums -foptimize-sibling-calls
 CPP_EXPORTS = -fvisibility=hidden -nostartfiles -Wl,-O3 -Wl,--no-entry -Wl,--strip-debug -Wl,--merge-data-segments -Wl,--export-dynamic
-CPP_FLAGS = --target=wasm32-unknown-unknown -fno-exceptions -nostdlib
+CPP_FLAGS = --target=wasm32-unknown-unknown -g0 -mlittle-endian -fno-exceptions -fignore-exceptions -nostdlib --offload-new-driver -fnext-runtime -unwindlib=unwindlib
 CPP_DEFINE = -DBROTLI_BUILD_32_BIT=1 -DBROTLI_BUILD_NO_RBIT=1 -DBROTLI_BUILD_NO_UNALIGNED_READ_FAST=1 -DBROTLI_BUILD_LITTLE_ENDIAN=1 -DBROTLI_HAVE_LOG2=1
 
 COMMONDIR = $(ROOTDIR)c/common

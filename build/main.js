@@ -13,16 +13,16 @@ import * as wasm from './main.wasm?module';
  */
 const brotli = (new WebAssembly.Instance(wasm.default, {})).exports;
 
+const memory = new DataView(brotli.memory.buffer);
+
 /**
  * @param {number} pointer
  * @param {Uint8Array} buffer
  */
 const store = (pointer, buffer) => {
-  let bufferMemory = new Uint8Array(brotli.memory.buffer);
   for (let i = pointer, j = 0, size = buffer.byteLength; j < size; ++i, ++j) {
-    bufferMemory[i] = buffer[j];
+    memory.setUint8(i, buffer[j]);
   }
-  bufferMemory = null;
 };
 
 /**
@@ -31,12 +31,10 @@ const store = (pointer, buffer) => {
  * @returns {Uint8Array}
  */
 const load = (pointer, size) => {
-  let bufferMemory = new Uint8Array(brotli.memory.buffer);
   const buffer = new Uint8Array(size);
   for (let i = pointer, j = 0; j < size; ++i, ++j) {
-    buffer[j] = bufferMemory[i];
+    buffer[j] = memory.getUint8(i);
   }
-  bufferMemory = null;
   return buffer;
 };
 
